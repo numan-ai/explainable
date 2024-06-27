@@ -44,3 +44,12 @@ build-backend = "hatchling.build"
 
 [tool.hatch.version]
 path = "src/explainable/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/.github",
+  "/docs",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/explainable"]
