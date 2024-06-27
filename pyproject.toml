@@ -4,7 +4,6 @@ description = "Visualise complex data structures in real time"
 readme = "README.md"
 requires-python = ">=3.7"
 license = {file = "LICENSE"}
-keywords = []
 authors = [
   { name = "Numan Team", email = "kostya@numan.ai" },
 ]
@@ -43,3 +42,5 @@ Changelog = "https://github.com/numan-ai/explainable/blob/master/CHANGELOG.md"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.version]
+path = "src/explainable/__init__.py"
