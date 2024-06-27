@@ -1,6 +1,6 @@
 # Explainable
 
-[![PyPI version](https://img.shields.io/pypi/v/openai.svg)](https://pypi.org/project/explainable/)
+[![PyPI version](https://img.shields.io/pypi/v/explainable.svg)](https://pypi.org/project/explainable/)
 
 Explainable is a project for visualising complex data structures in real time with minimal effort.
 This project was created by [Numan Team](https://numan.ai/).
