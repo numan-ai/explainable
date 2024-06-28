@@ -1,4 +1,5 @@
 import inspect
+import logging
 import dataclasses
 
 from typing import Any, Callable, Optional, Self
@@ -7,6 +8,9 @@ from dataclasses import dataclass, field, is_dataclass
 
 from . import server
 
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 META_OBJECT_PROPERTY = "_explainable"
 
@@ -28,7 +32,7 @@ def _on_value_being_set(obj, key, value, previoius_value):
     elif is_dataclass(value):
         make_observable(type(value))
         if not hasattr(value, META_OBJECT_PROPERTY):
-            super(type(value), value).__setattr__(META_OBJECT_PROPERTY, Viso(initialised=True))
+            super(type(value), value).__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True))
 
     if hasattr(value, META_OBJECT_PROPERTY):
         value._explainable.parents.append((key, expl))
@@ -37,7 +41,7 @@ def _on_value_being_set(obj, key, value, previoius_value):
 
 
 @dataclass
-class Viso:
+class MetaData:
     initialised: bool = False
     old_post_init: Optional[Callable] = None
     old_setattr: Optional[Callable] = None
@@ -76,7 +80,7 @@ def send_updates(obj, key, value, previoius_value):
 
 class VisoDict(UserDict):
     def __init__(self, data: dict[str, Any]) -> None:
-        super().__setattr__(META_OBJECT_PROPERTY, Viso(initialised=True))
+        super().__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True))
         super().__init__(data)
 
     def __setitem__(self, key, value):
@@ -86,7 +90,7 @@ class VisoDict(UserDict):
 
 class VisoList(UserList):
     def __init__(self, data: list[Any]) -> None:
-        super().__setattr__(META_OBJECT_PROPERTY, Viso(initialised=True))
+        super().__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True))
         super().__init__(data)
 
     def __setitem__(self, key, value):
@@ -196,7 +200,7 @@ def make_observable(cls) -> type:
 
     def __new_new__(cls, *args, **kwargs) -> None:
         instance = cls.__old_new(cls)
-        super(cls, instance).__setattr__(META_OBJECT_PROPERTY, Viso(
+        super(cls, instance).__setattr__(META_OBJECT_PROPERTY, MetaData(
             initialised=False,
         ))
 
@@ -237,7 +241,7 @@ def _deep_make_observable(obj: Any) -> None:
         obj = VisoDict(obj)
     
     if not hasattr(obj, META_OBJECT_PROPERTY):
-        super(type(obj), obj).__setattr__(META_OBJECT_PROPERTY, Viso(initialised=True))
+        super(type(obj), obj).__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True))
 
     if is_dataclass(obj):
         make_observable(type(obj))
@@ -259,6 +263,10 @@ def _deep_make_observable(obj: Any) -> None:
 
 
 def observe(view_id: str, obj: Any) -> None:    
+    if not server.ENABLED:
+        logger.debug()
+        return obj
+    
     obj = _deep_make_observable(obj)
 
     obj._explainable.views.add(view_id)

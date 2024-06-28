@@ -14,16 +14,17 @@ logger.setLevel(logging.INFO)
 
 
 @dataclass
-class VisoUpdate:
+class ObjectUpdate:
     type: str
     data: dict
 
 
-UPDATES_QUEUE: queue.Queue[VisoUpdate] = queue.Queue(maxsize=1000)
+UPDATES_QUEUE: queue.Queue[ObjectUpdate] = queue.Queue(maxsize=1000)
 CLIENTS: list[websockets.WebSocketServerProtocol] = []
 PAUSED: bool = False
-SNAPSHOTS: dict[str, VisoUpdate] = {}
+SNAPSHOTS: dict[str, ObjectUpdate] = {}
 SHOULD_WAIT_CLIENTS: bool = True
+ENABLED: bool = False
 
 
 def _remove_client(client):
@@ -103,8 +104,9 @@ def _start_threaded_server(host, port) -> None:
 
 
 def init(wait_client=True, host="localhost", port=8120) -> None:
-    global SHOULD_WAIT_CLIENTS
+    global SHOULD_WAIT_CLIENTS, ENABLED
     SHOULD_WAIT_CLIENTS = wait_client
+    ENABLED = True
 
     threading.Thread(target=_start_threaded_server, kwargs={
         "host": host,
@@ -119,4 +121,4 @@ def send_update(update_type: str, data: dict) -> None:
     while not CLIENTS and SHOULD_WAIT_CLIENTS:
         time.sleep(0.1)
     
-    UPDATES_QUEUE.put(VisoUpdate(type=update_type, data=data))
+    UPDATES_QUEUE.put(ObjectUpdate(type=update_type, data=data))
