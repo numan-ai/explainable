@@ -1,10 +1,11 @@
-import asyncio
-from dataclasses import asdict, dataclass
-import json
-import logging
-import queue
-import threading
 import time
+import json
+import queue
+import asyncio
+import logging
+import threading
+
+from dataclasses import asdict, dataclass
 
 import websockets
 
@@ -19,12 +20,13 @@ class ObjectUpdate:
     data: dict
 
 
+ENABLED: bool = False
+PAUSED: bool = False
+SHOULD_WAIT_CLIENTS: bool = True
+
 UPDATES_QUEUE: queue.Queue[ObjectUpdate] = queue.Queue(maxsize=1000)
 CLIENTS: list[websockets.WebSocketServerProtocol] = []
-PAUSED: bool = False
 SNAPSHOTS: dict[str, ObjectUpdate] = {}
-SHOULD_WAIT_CLIENTS: bool = True
-ENABLED: bool = False
 
 
 def _remove_client(client):
@@ -69,8 +71,8 @@ async def _handle_client(websocket: websockets.WebSocketServerProtocol, path: st
             else:
                 raise ValueError(f"Unknown action: {data['action']}")
     except websockets.ConnectionClosedError:
-        logger.debug("Client disconnected")
         _remove_client(websocket)
+        logger.debug("Client disconnected")
 
 
 async def _send_updates() -> None:

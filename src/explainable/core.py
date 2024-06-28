@@ -26,16 +26,18 @@ def _on_value_being_set(obj, key, value, previoius_value):
         )
     
     if isinstance(value, dict):
-        value = VisoDict(value)
+        value = ExplainableDict(value)
     elif isinstance(value, list):
-        value = VisoList(value)
+        value = ExplainableList(value)
     elif is_dataclass(value):
         make_observable(type(value))
         if not hasattr(value, META_OBJECT_PROPERTY):
-            super(type(value), value).__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True))
+            metadata = MetaData(initialised=True)
+            super(type(value), value).__setattr__(META_OBJECT_PROPERTY, metadata)
 
     if hasattr(value, META_OBJECT_PROPERTY):
-        value._explainable.parents.append((key, expl))
+        value_expl = getattr(value, META_OBJECT_PROPERTY)
+        value_expl.parents.append((key, expl))
 
     return value
 
@@ -64,7 +66,7 @@ class MetaData:
 
 
 def send_updates(obj, key, value, previoius_value):
-    expl = obj._explainable
+    expl = getattr(obj, META_OBJECT_PROPERTY)
     paths = expl.get_path_list(f"data.{key}")
 
     for view, path_set in paths.items():
@@ -78,7 +80,7 @@ def send_updates(obj, key, value, previoius_value):
             })
 
 
-class VisoDict(UserDict):
+class ExplainableDict(UserDict):
     def __init__(self, data: dict[str, Any]) -> None:
         super().__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True))
         super().__init__(data)
@@ -88,7 +90,7 @@ class VisoDict(UserDict):
         super().__setitem__(key, value)
 
 
-class VisoList(UserList):
+class ExplainableList(UserList):
     def __init__(self, data: list[Any]) -> None:
         super().__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True))
         super().__init__(data)
@@ -162,7 +164,7 @@ def serialize(obj: Any, path) -> dict[str, Any]:
             "struct_id": path,
             "value": obj,
         }
-    elif isinstance(obj, (list, VisoList)):
+    elif isinstance(obj, (list, ExplainableList)):
         return {
             "type": "array", 
             "struct_id": path,
@@ -171,7 +173,7 @@ def serialize(obj: Any, path) -> dict[str, Any]:
                 for idx, item in enumerate(obj)
             ],
         }
-    elif isinstance(obj, (dict, VisoDict)):
+    elif isinstance(obj, (dict, ExplainableDict)):
         return {
             "type": "map",
             "struct_id": path,
@@ -236,9 +238,9 @@ def _deep_make_observable(obj: Any) -> None:
         return obj
     
     if isinstance(obj, list):
-        obj = VisoList(obj)
+        obj = ExplainableList(obj)
     elif isinstance(obj, dict):
-        obj = VisoDict(obj)
+        obj = ExplainableDict(obj)
     
     if not hasattr(obj, META_OBJECT_PROPERTY):
         super(type(obj), obj).__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True))
@@ -251,11 +253,11 @@ def _deep_make_observable(obj: Any) -> None:
                 value = _deep_make_observable(value)
             setattr(obj, field.name, value)
 
-    elif isinstance(obj, VisoList):
+    elif isinstance(obj, ExplainableList):
         for idx, value in enumerate(obj):
             obj[idx] = _deep_make_observable(value)
 
-    elif isinstance(obj, VisoDict):
+    elif isinstance(obj, ExplainableDict):
         for key, value in obj.items():
             obj[key] = _deep_make_observable(value)
 
@@ -268,8 +270,9 @@ def observe(view_id: str, obj: Any) -> None:
         return obj
     
     obj = _deep_make_observable(obj)
+    expl = getattr(obj, META_OBJECT_PROPERTY)
+    expl.views.add(view_id)
 
-    obj._explainable.views.add(view_id)
     server.send_update(
         "snapshot",
         data={
@@ -281,6 +284,6 @@ def observe(view_id: str, obj: Any) -> None:
             "structure": serialize(obj, path=view_id),
         }
     )
-    obj._explainable.initialised = True
+    expl.initialised = True
 
     return obj
