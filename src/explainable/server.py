@@ -9,6 +9,8 @@ from dataclasses import asdict, dataclass
 
 import websockets
 
+from .display import DISPLAY_REGISTRY
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -56,6 +58,15 @@ async def _handle_client(websocket: websockets.WebSocketServerProtocol, path: st
 
     for view_id in SNAPSHOTS:
         await websocket.send(json.dumps(asdict(SNAPSHOTS[view_id])))
+
+    display_config = {}
+    for name, config in DISPLAY_REGISTRY.items():
+        display_config[name] = asdict(config)
+
+    await websocket.send(json.dumps({
+        "type": "displayConfig",
+        "data": display_config,
+    }))
 
     try:
         async for message in websocket:

@@ -18,11 +18,15 @@ META_OBJECT_PROPERTY = "_explainable"
 def _on_value_being_set(obj, key, value, previoius_value):
     expl = getattr(obj, META_OBJECT_PROPERTY, None)
     if expl and (expl.parents or expl.views):
+        upd = {
+            "type": "setValue",
+            "value": serialize(value, path="diff"),
+            "previoiusValue": serialize(previoius_value, path="diff"),
+        }
         send_updates(
             obj,
             key,
-            value,
-            previoius_value,
+            upd,
         )
     
     if isinstance(value, dict):
@@ -35,9 +39,10 @@ def _on_value_being_set(obj, key, value, previoius_value):
             metadata = MetaData(initialised=True)
             super(type(value), value).__setattr__(META_OBJECT_PROPERTY, metadata)
 
-    if hasattr(value, META_OBJECT_PROPERTY):
-        value_expl = getattr(value, META_OBJECT_PROPERTY)
-        value_expl.parents.append((key, expl))
+    value_expl = getattr(value, META_OBJECT_PROPERTY, None)
+    if value_expl is not None:
+        if (key, expl) not in value_expl.parents:
+            value_expl.parents.append((key, expl))
 
     return value
 
@@ -65,19 +70,17 @@ class MetaData:
         return paths
 
 
-def send_updates(obj, key, value, previoius_value):
+def send_updates(obj, key, update_data):
     expl = getattr(obj, META_OBJECT_PROPERTY)
-    paths = expl.get_path_list(f"data.{key}")
+    base_path = f"data.{key}" if key is not None else "data"
+    paths = expl.get_path_list(base_path)
 
     for view, path_set in paths.items():
         for path in list(path_set):
-            server.send_update("diff", data={
-                "view_id": view,
-                "type": "setValue",
-                "path": path,
-                "value": serialize(value, path="diff"),
-                "previoiusValue": serialize(previoius_value, path="diff"),
-            })
+            data = update_data.copy()
+            data["view_id"] = view
+            data["path"] = path
+            server.send_update("diff", data=data)
 
 
 class ExplainableDict(UserDict):
@@ -105,7 +108,17 @@ class ExplainableList(UserList):
         super().__setitem__(key, value)
     
     def append(self, value):
-        raise NotImplementedError()
+        upd = {
+            "type": "listAppend",
+            "value": serialize(value, path="diff"),
+        }
+        send_updates(
+            self,
+            key=None,
+            update_data=upd,
+        )
+        # TODO: add parent to the value
+
         super().append(value)
 
     def insert(self, index, value):
