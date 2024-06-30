@@ -6,6 +6,8 @@ from typing import Any, Callable, Optional, Self
 from collections import UserDict, UserList, defaultdict
 from dataclasses import dataclass, field, is_dataclass
 
+from explainable import display
+
 from . import server
 
 
@@ -245,6 +247,17 @@ def make_observable(cls) -> type:
     return cls
 
 
+def _set_default_display_as(cls):
+    if cls.__name__ in display.DISPLAY_REGISTRY:
+        return
+    
+    items = []
+    for field in dataclasses.fields(cls):
+        item = display.field(field.name)
+        items.append(item)
+        
+    display.display_as("array", items)(cls)
+        
 
 def _deep_make_observable(obj: Any) -> None:
     if isinstance(obj, (int, float, str, bool)) or obj is None:
@@ -259,6 +272,7 @@ def _deep_make_observable(obj: Any) -> None:
         super(type(obj), obj).__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True))
 
     if is_dataclass(obj):
+        _set_default_display_as(type(obj))
         make_observable(type(obj))
         for field in dataclasses.fields(obj):
             value = getattr(obj, field.name)
@@ -297,6 +311,8 @@ def observe(view_id: str, obj: Any) -> None:
             "structure": serialize(obj, path=view_id),
         }
     )
+    from .server import send_update
+    send_update("__init__", {})
     expl.initialised = True
 
     return obj

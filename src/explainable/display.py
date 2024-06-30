@@ -34,6 +34,7 @@ def display_as(data_type: str, *args, **kwargs):
             "items": args[0],
         })
         DISPLAY_REGISTRY[cls.__name__] = options
+
         return cls
     
     return decorator

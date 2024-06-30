@@ -50,23 +50,28 @@ async def _send_message(message: str) -> None:
             logger.debug("Client disconnected")
 
 
+async def _send_init_data():
+    display_config = {}
+    for name, config in DISPLAY_REGISTRY.items():
+        display_config[name] = asdict(config)
+    
+    for client in CLIENTS:
+        for view_id in SNAPSHOTS:
+            await client.send(json.dumps(asdict(SNAPSHOTS[view_id])))
+
+        await client.send(json.dumps({
+            "type": "displayConfig",
+            "data": display_config,
+        }))
+
+
 async def _handle_client(websocket: websockets.WebSocketServerProtocol, path: str) -> None:
     global PAUSED
     logger.debug("Client connected")
 
     CLIENTS.append(websocket)
 
-    for view_id in SNAPSHOTS:
-        await websocket.send(json.dumps(asdict(SNAPSHOTS[view_id])))
-
-    display_config = {}
-    for name, config in DISPLAY_REGISTRY.items():
-        display_config[name] = asdict(config)
-
-    await websocket.send(json.dumps({
-        "type": "displayConfig",
-        "data": display_config,
-    }))
+    await _send_init_data()
 
     try:
         async for message in websocket:
@@ -98,6 +103,10 @@ async def _send_updates() -> None:
             continue
         
         message = UPDATES_QUEUE.get()
+
+        if message.type == "__init__":
+            await _send_init_data()
+            continue
 
         if message.type == "snapshot":
             SNAPSHOTS[message.data['view_id']] = message
