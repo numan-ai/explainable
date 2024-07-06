@@ -29,7 +29,9 @@ class NumberWidget(BaseWidget):
     """ Visually represents number structure
     Can round the represented number. 
     """
+    source: BaseSource
     round: Optional[int] = None
+    comma: bool = False
     type: str = "number"
 
 
