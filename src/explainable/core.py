@@ -7,6 +7,7 @@ from collections import UserDict, UserList, defaultdict
 from dataclasses import dataclass, field, is_dataclass
 
 from explainable import display
+from explainable.base_entities import BaseWidget
 
 from . import server
 
@@ -74,7 +75,12 @@ class MetaData:
 
 def send_updates(obj, key, update_data):
     expl = getattr(obj, META_OBJECT_PROPERTY)
-    base_path = f"data.{key}" if key is not None else "data"
+
+    if isinstance(obj, (dict, ExplainableDict)):
+        base_path = "values.0"
+
+    else:
+        base_path = f"data.{key}" if key is not None else "data"
     paths = expl.get_path_list(base_path)
 
     for view, path_set in paths.items():
@@ -181,7 +187,7 @@ def serialize(obj: Any, path) -> dict[str, Any]:
         }
     elif isinstance(obj, (list, ExplainableList)):
         return {
-            "type": "array", 
+            "type": "list", 
             "struct_id": path,
             "data": [
                 serialize(item, path=f"{path}.{idx}")
@@ -190,12 +196,16 @@ def serialize(obj: Any, path) -> dict[str, Any]:
         }
     elif isinstance(obj, (dict, ExplainableDict)):
         return {
-            "type": "map",
+            "type": "dict",
             "struct_id": path,
-            "data": {
-                key: serialize(value, path=f"{path}.{key}")
-                for key, value in obj.items()
-            },
+            "keys": [
+                serialize(key, path=f"{path}.keys.{idx}")
+                for idx, key in enumerate(obj.keys())
+            ],
+            "values": [
+                serialize(value, path=f"{path}.values.{idx}")
+                for idx, value in enumerate(obj.values())
+            ],
         }
     elif obj is None:
         return {
@@ -256,7 +266,7 @@ def _set_default_display_as(cls):
         item = display.field(field.name)
         items.append(item)
         
-    display.display_as("array", items)(cls)
+    display.display_as("list", items)(cls)
         
 
 def _deep_make_observable(obj: Any) -> None:
@@ -291,7 +301,7 @@ def _deep_make_observable(obj: Any) -> None:
     return obj
 
 
-def observe(view_id: str, obj: Any) -> None:    
+def observe(view_id: str, obj: Any, widget: BaseWidget) -> None:    
     if not server.ENABLED:
         logger.debug()
         return obj
@@ -304,11 +314,8 @@ def observe(view_id: str, obj: Any) -> None:
         "snapshot",
         data={
             "view_id": view_id,
-            "is_paused": server.PAUSED,
-            "settings": {
-                "view_id": view_id,
-            },
             "structure": serialize(obj, path=view_id),
+            "widget": None if widget is None else dataclasses.asdict(widget),
         }
     )
     from .server import send_update

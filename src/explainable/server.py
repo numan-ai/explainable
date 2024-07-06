@@ -57,12 +57,18 @@ async def _send_init_data():
     
     for client in CLIENTS:
         for view_id in SNAPSHOTS:
-            await client.send(json.dumps(asdict(SNAPSHOTS[view_id])))
+            try:
+                await client.send(json.dumps(asdict(SNAPSHOTS[view_id])))
+            except websockets.exceptions.ConnectionClosed:
+                _remove_client(client)
 
-        await client.send(json.dumps({
-            "type": "displayConfig",
-            "data": display_config,
-        }))
+        try:
+            await client.send(json.dumps({
+                "type": "displayConfig",
+                "data": display_config,
+            }))
+        except websockets.exceptions.ConnectionClosed:
+            _remove_client(client)
 
 
 async def _handle_client(websocket: websockets.WebSocketServerProtocol, path: str) -> None:
