@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from explainable.base_entities import BaseStructure, BaseStructureFunction
+from explainable.base_entities import BaseSource
 
 
 @dataclass
-class ref(BaseStructureFunction):
+class Reference(BaseSource):
     """ Reference to a structure 
 
     Current view can be referenced using "$":
@@ -19,36 +19,31 @@ class ref(BaseStructureFunction):
       Fields can be accessed as usual: "item.name".
     """
     path: str
+    type: str = "ref"
 
 
 @dataclass
-class number_min(BaseStructureFunction):
+class Min(BaseSource):
     """ Creates a number structure
     Its value is the minimum value of the two structures
     """
-    first: BaseStructure
-    second: BaseStructure
+    first: BaseSource
+    second: BaseSource
+    type: str = "min"
 
 
 @dataclass
-class number_max(number_min):
+class Max(BaseSource):
     """ Creates a number structure
     Its value is the maximum value of the two structures
     """
-    pass
+    first: BaseSource
+    second: BaseSource
+    type: str = "max"
 
 
 @dataclass
-class list_min(BaseStructureFunction):
-    """ Creates a number structure
-    Its value is the minimum value of a list structure
-    """
-    value: BaseStructure
-
-
-@dataclass
-class list_max(list_min):
-    """ Creates a number structure
-    Its value is the maximum value of a list structure
-    """
-    pass
+class String(BaseSource):
+    """ Creates a string structure """
+    format: str
+    type: str = "string"

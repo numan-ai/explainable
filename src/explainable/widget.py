@@ -2,18 +2,18 @@ from dataclasses import dataclass
 from typing import Optional
 
 from explainable.base_entities import (
+    BaseSource,
     BaseWidget, 
-    BaseStructure,
 )
-from explainable.structure_funcs import BaseStructureFunction
+from explainable.source import BaseSource
 
 
 @dataclass
-class StringWidge(BaseWidget):
+class StringWidget(BaseWidget):
     """ Visually represents any structure as a string
     Any structure can be represented using the "format" field.
     Formats use references based on the structure passed to this
-      component. 
+      widget. 
     Example of a format: "{item.name}: {item.age}"
     This format will result in a string like "Mike: 12"
     In order to have a "{" or "}" character in the format escape it
@@ -21,6 +21,7 @@ class StringWidge(BaseWidget):
     """
     max_size: Optional[int] = None
     format: str = "{item}"
+    type: str = "string"
 
 
 @dataclass
@@ -29,14 +30,15 @@ class NumberWidget(BaseWidget):
     Can round the represented number. 
     """
     round: Optional[int] = None
+    type: str = "number"
 
 
 @dataclass
 class ListWidget(BaseWidget):
     """ Visually represents multiple structures in a row """
-    source: BaseStructure | list
-    component_list: Optional[list[BaseWidget]] = None
-    item_component: Optional[BaseWidget] = None
+    source: BaseSource | list[BaseSource]
+    item_widget: Optional[BaseWidget | list[BaseWidget]] = None
+    type: str = "list"
 
 
 @dataclass
@@ -46,30 +48,30 @@ class VerticalListWidget(ListWidget):
 
 
 @dataclass
-class GraphNodeWidget(BaseWidget):
+class GraphNode:
     """ Node configuration for the graph widget """
-    source: BaseStructure
-    id: BaseStructureFunction
-    component: Optional[BaseWidget] = None
+    source: BaseSource
+    id: BaseSource
+    widget: Optional[BaseWidget] = None
 
 
 
 @dataclass
-class GraphEdgeComponent(BaseWidget):
-    """ Edge configuration for the graph component """
-    source: BaseStructure
-    start: BaseStructureFunction
-    end: BaseStructureFunction
-    id: Optional[BaseStructureFunction] = None
-    label: Optional[BaseStructureFunction] = None
-    weight: Optional[BaseStructureFunction] = None
-    component: Optional[BaseWidget] = None
+class GraphEdge:
+    """ Edge configuration for the graph widget """
+    source: BaseSource
+    start: BaseSource
+    end: BaseSource
+    id: Optional[BaseSource] = None
+    label: Optional[BaseSource] = None
+    weight: Optional[BaseSource] = None
 
 
 @dataclass
-class GraphComponent(BaseWidget):
+class GraphWidget(BaseWidget):
     """ Visually represents multiple structures as a graph
     Connects those structures with arrows
     """
-    node: GraphNodeWidget
-    edge: GraphEdgeComponent
+    nodes: GraphNode
+    edges: GraphEdge
+    type: str = "graph"

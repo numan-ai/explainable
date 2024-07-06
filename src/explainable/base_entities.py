@@ -3,11 +3,11 @@ class BaseStructure:
     pass
 
 
-class BaseStructureFunction(BaseStructure):
-    """ Structure functions reference, transform or create raw data """
+class BaseWidget:
+    """ Widgets are visual representations for structures """
     pass
 
 
-class BaseWidget:
-    """ Components are visual representations for structures """
+class BaseSource:
+    """ Base class for sources of structures """
     pass
