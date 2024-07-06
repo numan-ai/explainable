@@ -19,6 +19,7 @@ class StringWidget(BaseWidget):
     In order to have a "{" or "}" character in the format escape it
       like this "{{" or "}}" accordingly.
     """
+    source: Optional[BaseSource] = None
     max_size: Optional[int] = None
     format: str = "{item}"
     type: str = "string"
