@@ -165,7 +165,7 @@ class ExplainableList(UserList):
 def serialize(obj: Any, path) -> dict[str, Any]:
     if is_dataclass(obj):
         return {
-            "type": "object",
+            "type": "dataclass",
             "struct_id": path,
             "subtype": type(obj).__name__,
             "data": {
@@ -209,9 +209,9 @@ def serialize(obj: Any, path) -> dict[str, Any]:
         }
     elif obj is None:
         return {
-            "type": "null",
+            "type": "string",
             "struct_id": path,
-            "data": {},
+            "value": "None",
         }
     elif hasattr(obj, "serialize_explainable"):
         return obj.serialize_explainable(serialize)

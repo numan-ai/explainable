@@ -30,6 +30,7 @@ SHOULD_WAIT_CLIENTS: bool = True
 UPDATES_QUEUE: queue.Queue[ObjectUpdate] = queue.Queue(maxsize=1000)
 CLIENTS: list[websockets.WebSocketServerProtocol] = []
 OBSERVED_OBJECTS: dict[str, any] = {}
+NEW_CLIENT_LOCK = threading.Lock()
 
 
 def _remove_client(client):
@@ -89,7 +90,8 @@ async def _handle_client(websocket: websockets.WebSocketServerProtocol, path: st
 
     CLIENTS.append(websocket)
 
-    await _send_init_data()
+    with NEW_CLIENT_LOCK:
+        await _send_init_data()
 
     try:
         async for message in websocket:
@@ -121,7 +123,8 @@ async def _send_updates() -> None:
         message = UPDATES_QUEUE.get()
 
         if message.type == "__init__":
-            await _send_init_data()
+            with NEW_CLIENT_LOCK:
+                await _send_init_data()
             continue
 
         data = json.dumps(asdict(message))
