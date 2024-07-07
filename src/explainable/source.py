@@ -47,3 +47,46 @@ class String(BaseSource):
     """ Creates a string structure """
     format: str
     type: str = "string"
+
+@dataclass
+class Number(BaseSource):
+    """ Creates a number structure """
+    round: bool
+    separation: bool
+    type: str = "number"
+
+@dataclass
+class MathAdd(BaseSource):
+    """ Creates a number structure
+    Its value is the addition of the two structures
+    """
+    first: BaseSource
+    second: BaseSource
+    type: str = "addition"
+
+@dataclass
+class MathSub(BaseSource):
+    """ Creates a number structure
+    Its value is the subtraction of the two structures
+    """
+    first: BaseSource
+    second: BaseSource
+    type: str = "subtraction"
+
+@dataclass
+class MathMul(BaseSource):
+    """ Creates a number structure
+    Its value is the multiplication of the two structures
+    """
+    first: BaseSource
+    second: BaseSource
+    type: str = "multiplication"
+
+@dataclass
+class MathDiv(BaseSource):
+    """ Creates a number structure
+    Its value is the division of the two structures
+    """
+    first: BaseSource
+    second: BaseSource
+    type: str = "division"
