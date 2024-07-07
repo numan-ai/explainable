@@ -32,7 +32,7 @@ class NumberWidget(BaseWidget):
     """
     source: BaseSource
     round: Optional[int] = None
-    comma: bool = False
+    separation: bool = False
     type: str = "number"
 
 

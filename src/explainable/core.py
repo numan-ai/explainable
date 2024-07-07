@@ -306,17 +306,24 @@ def observe(view_id: str, obj: Any, widget: BaseWidget) -> None:
         logger.debug()
         return obj
     
+    if view_id in server.OBSERVED_OBJECTS:
+        raise ValueError(f"Only one object per view is allowed")
+        
     obj = _deep_make_observable(obj)
     expl = getattr(obj, META_OBJECT_PROPERTY)
     expl.views.add(view_id)
 
+    init_data = {
+        "view_id": view_id,
+        "structure": serialize(obj, path=view_id),
+        "widget": None if widget is None else dataclasses.asdict(widget),
+    }
+
+    server.OBSERVED_OBJECTS[view_id] = init_data
+
     server.send_update(
         "snapshot",
-        data={
-            "view_id": view_id,
-            "structure": serialize(obj, path=view_id),
-            "widget": None if widget is None else dataclasses.asdict(widget),
-        }
+        data=init_data,
     )
     from .server import send_update
     send_update("__init__", {})

@@ -28,7 +28,7 @@ SHOULD_WAIT_CLIENTS: bool = True
 
 UPDATES_QUEUE: queue.Queue[ObjectUpdate] = queue.Queue(maxsize=1000)
 CLIENTS: list[websockets.WebSocketServerProtocol] = []
-SNAPSHOTS: dict[str, ObjectUpdate] = {}
+OBSERVED_OBJECTS: dict[str, any] = {}
 
 
 def _remove_client(client):
@@ -54,11 +54,14 @@ async def _send_init_data():
     display_config = {}
     for name, config in DISPLAY_REGISTRY.items():
         display_config[name] = asdict(config)
-    
+
     for client in CLIENTS:
-        for view_id in SNAPSHOTS:
+        for view_id in OBSERVED_OBJECTS:
             try:
-                await client.send(json.dumps(asdict(SNAPSHOTS[view_id])))
+                await client.send(json.dumps({
+                    "type": "snapshot",
+                    "data": OBSERVED_OBJECTS[view_id],
+                }))
             except websockets.exceptions.ConnectionClosed:
                 _remove_client(client)
 
@@ -98,8 +101,6 @@ async def _handle_client(websocket: websockets.WebSocketServerProtocol, path: st
 
 
 async def _send_updates() -> None:
-    global SNAPSHOTS
-
     while not CLIENTS:
         await asyncio.sleep(0.1)
 
@@ -114,9 +115,6 @@ async def _send_updates() -> None:
             await _send_init_data()
             continue
 
-        if message.type == "snapshot":
-            SNAPSHOTS[message.data['view_id']] = message
-        
         data = json.dumps(asdict(message))
         await _send_message(data)
 
