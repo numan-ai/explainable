@@ -319,7 +319,7 @@ def observe(view_id: str, obj: Any, widget: BaseWidget) -> None:
         "widget": None if widget is None else dataclasses.asdict(widget),
     }
 
-    server.OBSERVED_OBJECTS[view_id] = init_data
+    server.OBSERVED_OBJECTS[view_id] = obj, widget
 
     server.send_update(
         "snapshot",

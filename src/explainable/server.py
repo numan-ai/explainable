@@ -1,3 +1,4 @@
+import dataclasses
 import time
 import json
 import queue
@@ -55,12 +56,20 @@ async def _send_init_data():
     for name, config in DISPLAY_REGISTRY.items():
         display_config[name] = asdict(config)
 
-    for client in CLIENTS:
-        for view_id in OBSERVED_OBJECTS:
+    from .core import serialize
+    for view_id, (obj, widget) in OBSERVED_OBJECTS.items():
+        _serialized = serialize(obj, path=view_id)
+        _serialized_widget = None if widget is None else dataclasses.asdict(widget)
+        
+        for client in CLIENTS:
             try:
                 await client.send(json.dumps({
                     "type": "snapshot",
-                    "data": OBSERVED_OBJECTS[view_id],
+                    "data": {
+                        "view_id": view_id,
+                        "structure": _serialized,
+                        "widget": _serialized_widget,
+                    }
                 }))
             except websockets.exceptions.ConnectionClosed:
                 _remove_client(client)
