@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 from explainable.base_entities import BaseSource
 
 
@@ -52,8 +53,9 @@ class String(BaseSource):
 @dataclass
 class Number(BaseSource):
     """ Creates a number structure """
-    round: bool
-    separation: bool
+    value: float
+    round: Optional[bool] = None
+    separation: bool = False
     type: str = "number"
 
 

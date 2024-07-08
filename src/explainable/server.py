@@ -34,6 +34,7 @@ NEW_CLIENT_LOCK = threading.Lock()
 
 
 def _remove_client(client):
+    print("Removing client")
     try:
         CLIENTS.remove(client)
     except ValueError:
@@ -41,7 +42,7 @@ def _remove_client(client):
 
 
 async def _send_message(message: str) -> None:
-    for client in CLIENTS:
+    for client in CLIENTS.copy():
         try:
             await client.send(message)
         except websockets.exceptions.ConnectionClosedError:
@@ -62,8 +63,9 @@ async def _send_init_data():
         _serialized = serialize(obj, path=view_id)
         _serialized_widget = None if widget is None else dataclasses.asdict(widget)
         
-        for client in CLIENTS:
+        for client in CLIENTS.copy():
             try:
+                print("Sending snapshot")
                 await client.send(json.dumps({
                     "type": "snapshot",
                     "data": {
@@ -75,6 +77,7 @@ async def _send_init_data():
             except websockets.exceptions.ConnectionClosed:
                 _remove_client(client)
 
+    for client in CLIENTS.copy():
         try:
             await client.send(json.dumps({
                 "type": "displayConfig",
@@ -86,12 +89,13 @@ async def _send_init_data():
 
 async def _handle_client(websocket: websockets.WebSocketServerProtocol, path: str) -> None:
     global PAUSED
+    print("Client connected")
     logger.debug("Client connected")
 
     CLIENTS.append(websocket)
 
-    with NEW_CLIENT_LOCK:
-        await _send_init_data()
+    # with NEW_CLIENT_LOCK:
+    await _send_init_data()
 
     try:
         async for message in websocket:

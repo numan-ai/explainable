@@ -5,8 +5,9 @@ import dataclasses
 from typing import Any, Callable, Optional, Self
 from collections import UserDict, UserList, defaultdict
 from dataclasses import dataclass, field, is_dataclass
+import weakref
 
-from explainable import display
+from explainable import display, source, widget
 from explainable.base_entities import BaseWidget
 
 from . import server
@@ -52,6 +53,7 @@ def _on_value_being_set(obj, key, value, previoius_value):
 
 @dataclass
 class MetaData:
+    obj: Any
     initialised: bool = False
     old_post_init: Optional[Callable] = None
     old_setattr: Optional[Callable] = None
@@ -62,7 +64,11 @@ class MetaData:
         paths = defaultdict(set)
 
         for parent_name, parent_explainable in self.parents:
-            new_paths = parent_explainable.get_path_list(base_path=f"data.{parent_name}.{base_path}")
+            if isinstance(parent_explainable.obj(), ExplainableDict):
+                base_path = f"{parent_name}.{base_path}"
+            else:
+                base_path = f"data.{parent_name}.{base_path}"
+            new_paths = parent_explainable.get_path_list(base_path=base_path)
             for key, value in new_paths.items():
                 paths[key].update(value)
         
@@ -77,8 +83,7 @@ def send_updates(obj, key, update_data):
     expl = getattr(obj, META_OBJECT_PROPERTY)
 
     if isinstance(obj, (dict, ExplainableDict)):
-        base_path = "values.0"
-
+        base_path = key
     else:
         base_path = f"data.{key}" if key is not None else "data"
     paths = expl.get_path_list(base_path)
@@ -93,7 +98,7 @@ def send_updates(obj, key, update_data):
 
 class ExplainableDict(UserDict):
     def __init__(self, data: dict[str, Any]) -> None:
-        super().__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True))
+        super().__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True, obj=weakref.ref(self)))
         super().__init__(data)
 
     def __setitem__(self, key, value):
@@ -103,7 +108,7 @@ class ExplainableDict(UserDict):
 
 class ExplainableList(UserList):
     def __init__(self, data: list[Any]) -> None:
-        super().__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True))
+        super().__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True, obj=weakref.ref(self)))
         super().__init__(data)
 
     def __setitem__(self, key, value):
@@ -261,12 +266,10 @@ def _set_default_display_as(cls):
     if cls.__name__ in display.DISPLAY_REGISTRY:
         return
     
-    items = []
-    for field in dataclasses.fields(cls):
-        item = display.field(field.name)
-        items.append(item)
-        
-    display.display_as("list", items)(cls)
+    display.display_as(widget.ListWidget([
+        source.Reference(f"item.{field.name}")
+        for field in dataclasses.fields(cls)
+    ]))(cls)
         
 
 def _deep_make_observable(obj: Any) -> None:
@@ -279,7 +282,7 @@ def _deep_make_observable(obj: Any) -> None:
         obj = ExplainableDict(obj)
     
     if not hasattr(obj, META_OBJECT_PROPERTY):
-        super(type(obj), obj).__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True))
+        super(type(obj), obj).__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True, obj=weakref.ref(obj)))
 
     if is_dataclass(obj):
         _set_default_display_as(type(obj))

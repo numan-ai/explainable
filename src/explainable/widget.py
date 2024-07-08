@@ -39,9 +39,17 @@ class NumberWidget(BaseWidget):
 @dataclass
 class ListWidget(BaseWidget):
     """ Visually represents multiple structures in a row """
-    source: BaseSource | list[BaseSource]
+    source: Optional[BaseSource | list[BaseSource]] = None
     item_widget: Optional[BaseWidget | list[BaseWidget]] = None
     type: str = "list"
+
+
+@dataclass
+class DictWidget(BaseWidget):
+    """ Visually represents multiple structures in a row """
+    source: Optional[BaseSource | list[BaseSource]] = None
+    item_widget: Optional[BaseWidget | list[BaseWidget]] = None
+    type: str = "dict"
 
 
 @dataclass
@@ -53,8 +61,8 @@ class VerticalListWidget(ListWidget):
 @dataclass
 class GraphNode:
     """ Node configuration for the graph widget """
-    source: BaseSource
-    id: BaseSource
+    source: Optional[BaseSource] = None
+    id: Optional[BaseSource] = None
     widget: Optional[BaseWidget] = None
 
 
@@ -78,3 +86,14 @@ class GraphWidget(BaseWidget):
     nodes: GraphNode
     edges: GraphEdge
     type: str = "graph"
+
+
+@dataclass
+class TileWidget(BaseWidget):
+    """ Visually represents multiple structures as a tile
+    Connects those structures with arrows
+    """
+    width: Optional[BaseSource] = None
+    height: Optional[BaseSource] = None
+    color: Optional[BaseSource] = None
+    type: str = "tile"
