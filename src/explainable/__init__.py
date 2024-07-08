@@ -2,4 +2,4 @@ from .core import observe
 from .server import init
 from .display import display_as
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
