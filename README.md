@@ -8,7 +8,7 @@ This project was created by [Numan Team](https://numan.ai/).
 ## Installation
 
 ```sh
-pip install explainable
+pip install -U explainable
 ```
 
 ## Usage
