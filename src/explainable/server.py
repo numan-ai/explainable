@@ -124,14 +124,19 @@ async def _send_updates() -> None:
             await asyncio.sleep(0.1)
             continue
         
-        message = UPDATES_QUEUE.get()
+        updates = []
+        while not UPDATES_QUEUE.empty():
+            message = UPDATES_QUEUE.get()
 
-        if message.type == "__init__":
-            with NEW_CLIENT_LOCK:
-                await _send_init_data()
-            continue
+            if message.type == "__init__":
+                with NEW_CLIENT_LOCK:
+                    await _send_init_data()
+                continue
 
-        data = json.dumps(asdict(message))
+            updates.append(asdict(message))
+
+
+        data = json.dumps(updates)
         await _send_message(data)
 
 
