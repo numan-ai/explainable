@@ -108,7 +108,21 @@ class ExplainableDict(UserDict):
 
 class ExplainableList(UserList):
     def __init__(self, data: list[Any]) -> None:
-        super().__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True, obj=weakref.ref(self)))
+        self_expl = MetaData(initialised=True, obj=weakref.ref(self))
+        super().__setattr__(META_OBJECT_PROPERTY, self_expl)
+        data = [
+            _deep_make_observable(item)
+            for item in data
+        ]
+        for idx,item in enumerate(data):
+            expl = getattr(item, META_OBJECT_PROPERTY, None)
+            if expl is None:
+                continue
+            if (idx, expl) not in expl.parents:
+                expl.parents.append((idx, self_expl))
+            
+        # if not isinstance(data[0], str):
+        #     breakpoint()
         super().__init__(data)
 
     def __setitem__(self, key, value):

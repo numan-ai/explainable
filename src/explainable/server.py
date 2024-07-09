@@ -121,11 +121,11 @@ async def _send_updates() -> None:
 
     while True:
         if UPDATES_QUEUE.empty():
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.001)
             continue
         
         updates = []
-        while not UPDATES_QUEUE.empty():
+        while not UPDATES_QUEUE.empty() or len(updates) < 100:
             message = UPDATES_QUEUE.get()
 
             if message.type == "__init__":
@@ -135,8 +135,16 @@ async def _send_updates() -> None:
 
             updates.append(asdict(message))
 
-
         data = json.dumps(updates)
+
+        # message = UPDATES_QUEUE.get()
+
+        # if message.type == "__init__":
+        #     with NEW_CLIENT_LOCK:
+        #         await _send_init_data()
+        #     continue
+
+        # data = json.dumps(asdict(message))
         await _send_message(data)
 
 
@@ -169,3 +177,7 @@ def send_update(update_type: str, data: dict) -> None:
         time.sleep(0.1)
     
     UPDATES_QUEUE.put(ObjectUpdate(type=update_type, data=data))
+
+
+def force_update():
+    pass
