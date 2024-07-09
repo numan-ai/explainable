@@ -55,7 +55,7 @@ class DictWidget(BaseWidget):
 @dataclass
 class VerticalListWidget(ListWidget):
     """ Visually represents multiple structures in a column """
-    pass
+    type: str = "vlist"
 
 
 @dataclass
