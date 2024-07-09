@@ -55,9 +55,7 @@ class DictWidget(BaseWidget):
 @dataclass
 class VerticalListWidget(ListWidget):
     """ Visually represents multiple structures in a column """
-    source: Optional[BaseSource | list[BaseSource]] = None
-    item_widget: Optional[BaseWidget | list[BaseWidget]] = None
-    type: str = "list"
+    pass
 
 
 @dataclass
