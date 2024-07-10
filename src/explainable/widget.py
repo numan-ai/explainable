@@ -99,3 +99,9 @@ class TileWidget(BaseWidget):
     height: Optional[BaseSource] = None
     color: Optional[BaseSource] = None
     type: str = "tile"
+
+
+@dataclass
+class Style(BaseStyle):
+    margin: int = None
+    spacing: int = None
