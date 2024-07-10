@@ -11,3 +11,8 @@ class BaseWidget:
 class BaseSource:
     """ Base class for sources of structures """
     pass
+
+
+class BaseStyle:
+    """ Base class for styles of lists and vlists"""
+    pass

@@ -4,6 +4,7 @@ from typing import Optional
 from explainable.base_entities import (
     BaseSource,
     BaseWidget, 
+    BaseStyle,
 )
 from explainable.source import BaseSource
 
@@ -41,6 +42,7 @@ class ListWidget(BaseWidget):
     """ Visually represents multiple structures in a row """
     source: Optional[BaseSource | list[BaseSource]] = None
     item_widget: Optional[BaseWidget | list[BaseWidget]] = None
+    style: Optional[BaseStyle] = None
     type: str = "list"
 
 
