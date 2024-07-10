@@ -9,6 +9,7 @@ import weakref
 
 from explainable import display, source, widget
 from explainable.base_entities import BaseWidget
+from explainable.server import CONFIG as server_config
 
 from . import server
 
@@ -22,10 +23,11 @@ META_OBJECT_PROPERTY = "_explainable"
 def _on_value_being_set(obj, key, value, previoius_value):
     expl = getattr(obj, META_OBJECT_PROPERTY, None)
     if expl and (expl.parents or expl.views):
+        prev_ser = serialize(previoius_value, path="diff") if server_config.history_enabled else None
         upd = {
             "type": "setValue",
             "value": serialize(value, path="diff"),
-            "previoiusValue": serialize(previoius_value, path="diff"),
+            "previoiusValue": prev_ser,
         }
         send_updates(
             obj,
@@ -319,7 +321,7 @@ def _deep_make_observable(obj: Any) -> None:
 
 
 def observe(view_id: str, obj: Any, widget: BaseWidget=None) -> None:    
-    if not server.ENABLED:
+    if not server_config.enabled:
         logger.debug()
         return obj
     

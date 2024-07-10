@@ -23,9 +23,15 @@ class ObjectUpdate:
     data: dict
 
 
-ENABLED: bool = False
-PAUSED: bool = False
-SHOULD_WAIT_CLIENTS: bool = True
+@dataclass
+class ServerConfig:
+    enabled: bool = False
+    paused: bool = False
+    should_wait_clients: bool = True
+    history_enabled: bool = True
+
+
+CONFIG = ServerConfig()
 
 UPDATES_QUEUE: queue.Queue[ObjectUpdate] = queue.Queue(maxsize=1000)
 CLIENTS: list[websockets.WebSocketServerProtocol] = []
@@ -125,7 +131,7 @@ async def _send_updates() -> None:
             continue
         
         updates = []
-        while not UPDATES_QUEUE.empty() or len(updates) < 100:
+        while not UPDATES_QUEUE.empty() or len(updates) < 200:
             message = UPDATES_QUEUE.get()
 
             if message.type == "__init__":
@@ -158,10 +164,11 @@ def _start_threaded_server(host, port) -> None:
     asyncio.run(_main(host, port))
 
 
-def init(wait_client=True, host="localhost", port=8120) -> None:
-    global SHOULD_WAIT_CLIENTS, ENABLED
-    SHOULD_WAIT_CLIENTS = wait_client
-    ENABLED = True
+def init(wait_client=True, enable_history=True,host="localhost", port=8120) -> None:
+    CONFIG.should_wait_clients = wait_client
+    CONFIG.enabled = True
+    CONFIG.paused = False
+    CONFIG.history_enabled = enable_history
 
     threading.Thread(target=_start_threaded_server, kwargs={
         "host": host,
@@ -170,10 +177,10 @@ def init(wait_client=True, host="localhost", port=8120) -> None:
 
 
 def send_update(update_type: str, data: dict) -> None:
-    while PAUSED:
+    while CONFIG.paused:
         time.sleep(0.1)
     
-    while not CLIENTS and SHOULD_WAIT_CLIENTS:
+    while not CLIENTS and CONFIG.should_wait_clients:
         time.sleep(0.1)
     
     UPDATES_QUEUE.put(ObjectUpdate(type=update_type, data=data))
