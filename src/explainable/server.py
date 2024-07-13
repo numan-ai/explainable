@@ -71,7 +71,6 @@ async def _send_init_data():
         
         for client in CLIENTS.copy():
             try:
-                print("Sending snapshot")
                 await client.send(json.dumps({
                     "type": "snapshot",
                     "data": {
@@ -95,7 +94,6 @@ async def _send_init_data():
 
 async def _handle_client(websocket: websockets.WebSocketServerProtocol, path: str) -> None:
     global PAUSED
-    print("Client connected")
     logger.debug("Client connected")
 
     CLIENTS.append(websocket)
@@ -131,12 +129,11 @@ async def _send_updates() -> None:
             continue
         
         updates = []
-        while not UPDATES_QUEUE.empty() or len(updates) < 200:
-            message = UPDATES_QUEUE.get()
+        while not UPDATES_QUEUE.empty() and len(updates) < 200:
+            message = UPDATES_QUEUE.get_nowait()
 
             if message.type == "__init__":
-                with NEW_CLIENT_LOCK:
-                    await _send_init_data()
+                await _send_init_data()
                 continue
 
             updates.append(asdict(message))
@@ -173,7 +170,7 @@ def init(wait_client=True, enable_history=True,host="localhost", port=8120) -> N
     threading.Thread(target=_start_threaded_server, kwargs={
         "host": host,
         "port": port,
-    }).start()
+    }, daemon=True).start()
 
 
 def send_update(update_type: str, data: dict) -> None:
