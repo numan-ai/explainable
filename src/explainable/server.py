@@ -40,7 +40,6 @@ NEW_CLIENT_LOCK = threading.Lock()
 
 
 def _remove_client(client):
-    print("Removing client")
     try:
         CLIENTS.remove(client)
     except ValueError:
