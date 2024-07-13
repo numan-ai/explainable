@@ -27,7 +27,7 @@ lst = [0, 1, 2]
 # start observing
 lst = explainable.observe("view1", lst)
 
-# chagne your data
+# change your data
 while True:
   lst[0] += 1
   lst[1] -= 1
