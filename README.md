@@ -45,6 +45,7 @@ Currently supported data structures:
 - dataclass
 - list
 - dict
+- enums
 
 ## Requirements
 
