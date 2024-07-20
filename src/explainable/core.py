@@ -1,3 +1,4 @@
+import enum
 import inspect
 import logging
 import dataclasses
@@ -137,6 +138,10 @@ class ExplainableList(UserList):
         super().__setitem__(key, value)
     
     def append(self, value):
+        value = _deep_make_observable(value)
+        expl = getattr(value, META_OBJECT_PROPERTY)
+        expl.parents.append((len(self), getattr(self, META_OBJECT_PROPERTY)))
+
         upd = {
             "type": "listAppend",
             "value": serialize(value, path="diff"),
@@ -206,6 +211,12 @@ def serialize(obj: Any, path) -> dict[str, Any]:
             "struct_id": path,
             "value": obj,
         }
+    elif isinstance(obj, enum.Enum):
+        return {
+            "type": "string",
+            "struct_id": path,
+            "value": obj.name,
+        }
     elif isinstance(obj, (list, ExplainableList)):
         return {
             "type": "list", 
@@ -250,6 +261,7 @@ def make_observable(cls) -> type:
         instance = cls.__old_new(cls)
         super(cls, instance).__setattr__(META_OBJECT_PROPERTY, MetaData(
             initialised=False,
+            obj=weakref.ref(instance),
         ))
 
         return instance
@@ -282,10 +294,21 @@ def _set_default_display_as(cls):
     if cls.__name__ in display.DISPLAY_REGISTRY:
         return
     
-    display.display_as(widget.ListWidget([
-        source.Reference(f"item.{field.name}")
-        for field in dataclasses.fields(cls)
-    ]))(cls)
+    # display.display_as(widget.ListWidget([
+    #     source.Reference(f"item.{field.name}")
+    #     for field in dataclasses.fields(cls)
+    # ]))(cls)
+
+    display.display_as(widget.DictWidget(source=source.DictSource(
+        keys=[
+            source.String(field.name)
+            for field in dataclasses.fields(cls)
+        ],
+        values=[
+            source.Reference(f"item.{field.name}")
+            for field in dataclasses.fields(cls)
+        ],
+    )))(cls)
         
 
 def _deep_make_observable(obj: Any) -> None:

@@ -48,7 +48,7 @@ class ListWidget(BaseWidget):
 
 @dataclass
 class DictWidget(BaseWidget):
-    """ Visually represents multiple structures in a row """
+    """ Visually represents dictionary structures"""
     source: Optional[BaseSource | list[BaseSource]] = None
     item_widget: Optional[BaseWidget | list[BaseWidget]] = None
     type: str = "dict"

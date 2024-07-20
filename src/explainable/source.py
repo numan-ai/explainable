@@ -4,6 +4,13 @@ from explainable.base_entities import BaseSource
 
 
 @dataclass
+class DictSource(BaseSource):
+    keys: list[BaseSource]
+    values: list[BaseSource]
+    type: str = "dict"
+
+
+@dataclass
 class Reference(BaseSource):
     """ Reference to a structure 
 
