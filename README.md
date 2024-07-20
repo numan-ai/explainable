@@ -5,6 +5,8 @@
 Explainable is a project for visualising complex data structures in real time with minimal effort.
 This project was created by [Numan Team](https://numan.ai/).
 
+![plot](./demo.png)
+
 ## Installation
 
 ```sh
