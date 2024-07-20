@@ -169,7 +169,7 @@ def _start_threaded_server(host, port) -> None:
     asyncio.run(_main(host, port))
 
 
-def init(wait_client=True, enable_history=True,host="localhost", port=8120) -> None:
+def init(wait_client=True, enable_history=True,host="localhost", port=8120, silent=False) -> None:
     CONFIG.should_wait_clients = wait_client
     CONFIG.enabled = True
     CONFIG.paused = False
@@ -179,6 +179,10 @@ def init(wait_client=True, enable_history=True,host="localhost", port=8120) -> N
         "host": host,
         "port": port,
     }, daemon=True).start()
+
+    if not silent:
+        print("Visit https://explainable.numan.ai/ to see your data")
+        # logger.info(f"Visit https://explainable.numan.ai/ to see your data")
 
 
 def send_update(update_type: str, data: dict) -> None:
