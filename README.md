@@ -2,7 +2,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/explainable.svg)](https://pypi.org/project/explainable/)
 
-Explainable is a project for visualising complex data structures in real time with minimal effort.
+Explainable is a project for visualising complex data structures in real time with minimal effort.  
 This project was created by [Numan Team](https://numan.ai/).
 
 ![plot](./demo.png)
@@ -42,6 +42,8 @@ while True:
 
   time.sleep(1)
 ```
+
+![plot](./demo2.png)
 
 Currently supported data structures:
 - dataclass
