@@ -10,6 +10,8 @@ from dataclasses import asdict, dataclass
 
 import websockets
 
+import explainable
+
 from .display import DISPLAY_REGISTRY
 
 
@@ -96,6 +98,13 @@ async def _handle_client(websocket: websockets.WebSocketServerProtocol, path: st
     logger.debug("Client connected")
 
     CLIENTS.append(websocket)
+
+    await websocket.send(json.dumps({
+        "type": "init",
+        "data": {
+            "version": explainable.__version__,
+        },
+    }))
 
     # with NEW_CLIENT_LOCK:
     await _send_init_data()
