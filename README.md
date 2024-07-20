@@ -13,6 +13,12 @@ pip install -U explainable
 
 ## Usage
 
+1. Install using `pip`
+2. Import the library in your code
+3. Add `explainable.init()` in your code to start the server
+4. Select data to observe with `data = explainable.observe("my_view", data)`
+5. Go to https://explainable.numan.ai/
+
 ```python
 import time
 
