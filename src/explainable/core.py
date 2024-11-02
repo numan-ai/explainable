@@ -343,7 +343,7 @@ def _deep_make_observable(obj: Any) -> None:
     return obj
 
 
-def observe(view_id: str, obj: Any, widget: BaseWidget=None) -> None:    
+def observe(view_id: str, obj: Any, widget: BaseWidget=None) -> Any:    
     if not server_config.enabled:
         logger.debug()
         return obj
