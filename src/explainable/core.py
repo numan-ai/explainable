@@ -184,7 +184,7 @@ async def _send_init_data():
     pass
 
 
-async def _handle_client(websocket: websockets.WebSocketServerProtocol, path: str) -> None:
+async def _handle_client(websocket: websockets.WebSocketServerProtocol, path: str=None) -> None:
     from . import __version__
 
     global PAUSED
