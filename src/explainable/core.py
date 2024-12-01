@@ -1,374 +1,261 @@
-import enum
+from base64 import b64encode, urlsafe_b64encode
+from collections import defaultdict
+from dataclasses import asdict, dataclass, field, is_dataclass
+import gzip
 import inspect
+import json
+from typing import Any, Callable, Optional
+
+
+@dataclass
+class Node:
+    data: any
+    object_id: int = 0
+    widget: str = ""
+    layer: str = "main"
+    node_id: str = ""
+    default_x: float = 0.0
+    default_y: float = 0.0
+
+    def __post_init__(self) -> None:
+        self.node_id = f"{self.layer}:{self.object_id}"
+
+
+@dataclass
+class TextNode(Node):
+    widget: str = "text"
+
+
+@dataclass
+class NumberNode(Node):
+    widget: str = "number"
+
+
+@dataclass
+class RowNode(Node):
+    widget: str = "row"
+
+
+@dataclass
+class ColumnNode(Node):
+    widget: str = "column"
+
+
+@dataclass
+class PixelNode(Node):
+    widget: str = "pixel"
+
+
+@dataclass
+class Edge:
+    edge_id: str
+    node_start_id: str
+    node_end_id: str
+
+
+@dataclass
+class Graph:
+    nodes: list[Node] = field(default_factory=list)
+    edges: list[Edge] = field(default_factory=list)
+    nodes_by_id: dict[str, Node] = field(default_factory=dict)
+
+    def add_node(self, node: Node) -> Node:
+        if node.node_id in self.nodes_by_id:
+            return self.nodes_by_id[node.node_id]
+        self.nodes.append(node)
+        self.nodes_by_id[node.node_id] = node
+        return node
+    
+    def find_node(self, node_id: str) -> Node:
+        return self.nodes_by_id[node_id]
+    
+    def connect(self, node1: Node, node2: Node) -> Edge:
+        edge = Edge(
+            edge_id=f"{node1.node_id}-{node2.node_id}",
+            node_start_id=node1.node_id,
+            node_end_id=node2.node_id,
+        )
+        self.edges.append(edge)
+        return edge
+
+
+def add_context(name: str = "MAIN"):
+    CONTEXT.set(name, inspect.stack()[1])
+
+
+DRAW_FUNCTION = None
+
+
+def set_draw_function(func: Callable[[dict[str, dict]], dict[str, Any]]):
+    global DRAW_FUNCTION
+    DRAW_FUNCTION = func
+
+
+def collect_vis_state() -> bytes:
+    if CONTEXT is None:
+        raise RuntimeError("FRAME is None")
+    
+    data = DRAW_FUNCTION(CONTEXT)
+    if is_dataclass(data):
+        data = asdict(data)
+    raw_data = json.dumps(data)
+    compressed_data = gzip.compress(raw_data.encode())
+
+    return compressed_data
+
+
+import time
+import json
+import asyncio
 import logging
-import dataclasses
+import threading
 
-from typing import Any, Callable, Optional, Self
-from collections import UserDict, UserList, defaultdict
-from dataclasses import dataclass, field, is_dataclass
-import weakref
+from dataclasses import asdict, dataclass
 
-from explainable import display, source, widget
-from explainable.base_entities import BaseWidget
-from explainable.server import CONFIG as server_config
-
-from . import server
-
+import websockets
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-META_OBJECT_PROPERTY = "_explainable"
 
-
-def _on_value_being_set(obj, key, value, previoius_value):
-    expl = getattr(obj, META_OBJECT_PROPERTY, None)
-    if expl and (expl.parents or expl.views):
-        prev_ser = serialize(previoius_value, path="diff") if server_config.history_enabled else None
-        upd = {
-            "type": "setValue",
-            "value": serialize(value, path="diff"),
-            "previoiusValue": prev_ser,
-        }
-        send_updates(
-            obj,
-            key,
-            upd,
-        )
-    
-    if isinstance(value, dict):
-        value = ExplainableDict(value)
-    elif isinstance(value, list):
-        value = ExplainableList(value)
-    elif is_dataclass(value):
-        make_observable(type(value))
-        if not hasattr(value, META_OBJECT_PROPERTY):
-            metadata = MetaData(initialised=True)
-            super(type(value), value).__setattr__(META_OBJECT_PROPERTY, metadata)
-
-    value_expl = getattr(value, META_OBJECT_PROPERTY, None)
-    if value_expl is not None:
-        if (key, expl) not in value_expl.parents:
-            value_expl.parents.append((key, expl))
-
-    return value
+@dataclass
+class ObjectUpdate:
+    type: str
+    data: dict
 
 
 @dataclass
-class MetaData:
-    obj: Any
-    initialised: bool = False
-    old_post_init: Optional[Callable] = None
-    old_setattr: Optional[Callable] = None
-    views: set[str] = field(default_factory=set)
-    parents: list[tuple[str, Self]] = field(default_factory=list)
-
-    def get_path_list(self, base_path) -> dict[str, set[str]]:
-        paths = defaultdict(set)
-
-        for parent_name, parent_explainable in self.parents:
-            if isinstance(parent_explainable.obj(), ExplainableDict):
-                base_path = f"{parent_name}.{base_path}"
-            else:
-                base_path = f"data.{parent_name}.{base_path}"
-            new_paths = parent_explainable.get_path_list(base_path=base_path)
-            for key, value in new_paths.items():
-                paths[key].update(value)
-        
-        if self.views:
-            for view in self.views:
-                paths[view].add(base_path)
-
-        return paths
+class ServerConfig:
+    enabled: bool = False
+    paused: bool = False
+    should_wait_clients: bool = True
+    history_enabled: bool = True
 
 
-def send_updates(obj, key, update_data):
-    expl = getattr(obj, META_OBJECT_PROPERTY)
-
-    if isinstance(obj, (dict, ExplainableDict)):
-        base_path = key
-    else:
-        base_path = f"data.{key}" if key is not None else "data"
-    paths = expl.get_path_list(base_path)
-
-    for view, path_set in paths.items():
-        for path in list(path_set):
-            data = update_data.copy()
-            data["view_id"] = view
-            data["path"] = path
-            server.send_update("diff", data=data)
+CONFIG = ServerConfig()
 
 
-class ExplainableDict(UserDict):
-    def __init__(self, data: dict[str, Any]) -> None:
-        super().__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True, obj=weakref.ref(self)))
-        super().__init__(data)
+class ContextManager:
+    def __init__(self) -> None:
+        self._ctx_data: dict[str, inspect.FrameInfo] = {}
 
-    def __setitem__(self, key, value):
-        value = _on_value_being_set(self, key, value, self.get(key, None))
-        super().__setitem__(key, value)
+    def set(self, name: str, value: inspect.FrameInfo):
+        self._ctx_data[name] = value
 
+    def has(self, name: str) -> bool:
+        return name in self._ctx_data
 
-class ExplainableList(UserList):
-    def __init__(self, data: list[Any]) -> None:
-        self_expl = MetaData(initialised=True, obj=weakref.ref(self))
-        super().__setattr__(META_OBJECT_PROPERTY, self_expl)
-        data = [
-            _deep_make_observable(item)
-            for item in data
-        ]
-        for idx,item in enumerate(data):
-            expl = getattr(item, META_OBJECT_PROPERTY, None)
-            if expl is None:
-                continue
-            if (idx, expl) not in expl.parents:
-                expl.parents.append((idx, self_expl))
-            
-        # if not isinstance(data[0], str):
-        #     breakpoint()
-        super().__init__(data)
-
-    def __setitem__(self, key, value):
+    def get(self, name: str = 'MAIN') -> dict[str, Any]:
         try:
-            old_value = self[key]
-        except IndexError:
-            old_value = None
-
-        value = _on_value_being_set(self, key, value, old_value)
-        super().__setitem__(key, value)
-    
-    def append(self, value):
-        value = _deep_make_observable(value)
-        expl = getattr(value, META_OBJECT_PROPERTY)
-        expl.parents.append((len(self), getattr(self, META_OBJECT_PROPERTY)))
-
-        upd = {
-            "type": "listAppend",
-            "value": serialize(value, path="diff"),
-        }
-        send_updates(
-            self,
-            key=None,
-            update_data=upd,
-        )
-        # TODO: add parent to the value
-
-        super().append(value)
-
-    def insert(self, index, value):
-        raise NotImplementedError()
-        super().insert(index, value)
-
-    def extend(self, values):
-        raise NotImplementedError()
-        super().extend(values)
-
-    def remove(self, value):
-        raise NotImplementedError()
-        super().remove(value)
-
-    def pop(self, index):
-        raise NotImplementedError()
-        return super().pop(index)
-    
-    def clear(self):
-        raise NotImplementedError()
-        super().clear()
-
-    def sort(self, key=None, reverse=False):
-        raise NotImplementedError()
-        super().sort(key=key, reverse=reverse)
-
-    def reverse(self):
-        raise NotImplementedError()
-        super().reverse()
-
-    def __delitem__(self, key):
-        raise NotImplementedError()
-        super().__delitem__(key)
+            return self._ctx_data[name].frame.f_locals
+        except KeyError:
+            return {}
 
 
-def serialize(obj: Any, path) -> dict[str, Any]:
-    if is_dataclass(obj):
-        return {
-            "type": "dataclass",
-            "struct_id": path,
-            "subtype": type(obj).__name__,
+CLIENTS: list[websockets.WebSocketServerProtocol] = []
+OBSERVED_OBJECTS: dict[str, Any] = {}
+CONTEXT: ContextManager = ContextManager()
+
+
+def _remove_client(client):
+    try:
+        CLIENTS.remove(client)
+    except ValueError:
+        pass
+
+
+async def _send_message_to_all(message: str | bytes) -> None:
+    for client in CLIENTS.copy():
+        await _send_message_to_client(client, message)
+
+
+async def _send_message_to_client(client: websockets.WebSocketServerProtocol, message: str | bytes) -> None:
+    try:
+        await client.send(message)
+    except websockets.exceptions.ConnectionClosedError:
+        _remove_client(client)
+        logger.debug("Client disconnected")
+    except websockets.exceptions.ConnectionClosedOK:
+        _remove_client(client)
+        logger.debug("Client disconnected")
+
+
+async def _send_init_data():
+    pass
+
+
+async def _handle_client(websocket: websockets.WebSocketServerProtocol, path: str) -> None:
+    from . import __version__
+
+    global PAUSED
+    logger.debug("Client connected")
+
+    CLIENTS.append(websocket)
+
+    await websocket.send(json.dumps({
+        "type": "init",
+        "data": {
+            "version": __version__,
+        },
+    }))
+
+    await _send_init_data()
+
+    try:
+        async for message in websocket:
+            data = json.loads(message)
+            logger.debug("< %s", data)
+            if data["type"] == "pause":
+                CONFIG.paused = data["data"]
+                await _send_message_to_all(json.dumps({
+                    "type": data["request_id"],
+                    "data": CONFIG.paused,
+                }))
+                continue
+            else:
+                raise ValueError(f"Unknown action: {data['action']}")
+    except websockets.ConnectionClosed:
+        _remove_client(websocket)
+        logger.debug("Client disconnected")
+
+
+async def _send_updates() -> None:
+    while True:
+        data = collect_vis_state()
+
+        await _send_message_to_all(json.dumps({
+            "type": "snapshot",
             "data": {
-                field.name: serialize(getattr(obj, field.name), path=f"{path}.{field.name}")
-                for field in dataclasses.fields(obj)
-            },
-        }
-    elif isinstance(obj, (int, float)):
-        return {
-            "type": "number",
-            "struct_id": path,
-            "value": obj,
-        }
-    elif isinstance(obj, str):
-        return {
-            "type": "string",
-            "struct_id": path,
-            "value": obj,
-        }
-    elif isinstance(obj, enum.Enum):
-        return {
-            "type": "string",
-            "struct_id": path,
-            "value": obj.name,
-        }
-    elif isinstance(obj, (list, ExplainableList)):
-        return {
-            "type": "list", 
-            "struct_id": path,
-            "data": [
-                serialize(item, path=f"{path}.{idx}")
-                for idx, item in enumerate(obj)
-            ],
-        }
-    elif isinstance(obj, (dict, ExplainableDict)):
-        return {
-            "type": "dict",
-            "struct_id": path,
-            "keys": [
-                serialize(key, path=f"{path}.keys.{idx}")
-                for idx, key in enumerate(obj.keys())
-            ],
-            "values": [
-                serialize(value, path=f"{path}.values.{idx}")
-                for idx, value in enumerate(obj.values())
-            ],
-        }
-    elif obj is None:
-        return {
-            "type": "string",
-            "struct_id": path,
-            "value": "None",
-        }
-    elif hasattr(obj, "serialize_explainable"):
-        return obj.serialize_explainable(serialize)
-    else:
-        raise NotImplementedError(f"Unknown type: {type(obj)}")
+                "view_id": "view1",
+                "structure": b64encode(data).decode(),
+            }
+        }))
+
+        await asyncio.sleep(1)
 
 
-def make_observable(cls) -> type:
-    assert inspect.isclass(cls)
-
-    if hasattr(cls, "__old_setattr"):
-        return cls
-
-    def __new_new__(cls, *args, **kwargs) -> None:
-        instance = cls.__old_new(cls)
-        super(cls, instance).__setattr__(META_OBJECT_PROPERTY, MetaData(
-            initialised=False,
-            obj=weakref.ref(instance),
-        ))
-
-        return instance
-
-    def __new_post_init__(self) -> None:
-        if self.__old_post_init is not None:
-            self.__old_post_init()
-
-    def __new_setattr__(self, name: str, value: Any) -> None:
-        value = _on_value_being_set(
-            self, name, value, getattr(self, name, None)
-        )
-        
-        if self.__old_setattr is not None:
-            self.__old_setattr(name, value)
-        else:
-            raise RuntimeError("No old setattr")
-
-    cls.__old_new = getattr(cls, "__new__")
-    cls.__old_post_init = getattr(cls, "__post_init__", None)
-    cls.__old_setattr = getattr(cls, f"__setattr__", None)
-    cls.__post_init__ = __new_post_init__
-    cls.__setattr__ = __new_setattr__
-    cls.__new__ = __new_new__
-
-    return cls
+async def _main(host, port):
+    async with websockets.serve(_handle_client, host, port) as server:
+        logger.info(f"Server started at ws://{host}:{port}/")
+        await _send_updates()
 
 
-def _set_default_display_as(cls):
-    if cls.__name__ in display.DISPLAY_REGISTRY:
-        return
-    
-    # display.display_as(widget.ListWidget([
-    #     source.Reference(f"item.{field.name}")
-    #     for field in dataclasses.fields(cls)
-    # ]))(cls)
-
-    display.display_as(widget.DictWidget(source=source.DictSource(
-        keys=[
-            source.String(field.name)
-            for field in dataclasses.fields(cls)
-        ],
-        values=[
-            source.Reference(f"item.{field.name}")
-            for field in dataclasses.fields(cls)
-        ],
-    )))(cls)
-        
-
-def _deep_make_observable(obj: Any) -> None:
-    if isinstance(obj, (int, float, str, bool)) or obj is None:
-        return obj
-    
-    if isinstance(obj, list):
-        obj = ExplainableList(obj)
-    elif isinstance(obj, dict):
-        obj = ExplainableDict(obj)
-    
-    if not hasattr(obj, META_OBJECT_PROPERTY):
-        super(type(obj), obj).__setattr__(META_OBJECT_PROPERTY, MetaData(initialised=True, obj=weakref.ref(obj)))
-
-    if is_dataclass(obj):
-        _set_default_display_as(type(obj))
-        make_observable(type(obj))
-        for field in dataclasses.fields(obj):
-            value = getattr(obj, field.name)
-            if value is not None:
-                value = _deep_make_observable(value)
-            setattr(obj, field.name, value)
-
-    elif isinstance(obj, ExplainableList):
-        for idx, value in enumerate(obj):
-            obj[idx] = _deep_make_observable(value)
-
-    elif isinstance(obj, ExplainableDict):
-        for key, value in obj.items():
-            obj[key] = _deep_make_observable(value)
-
-    return obj
+def _start_threaded_server(host, port) -> None:
+    asyncio.run(_main(host, port))
 
 
-def observe(view_id: str, obj: Any, widget: BaseWidget=None) -> Any:    
-    if not server_config.enabled:
-        logger.debug()
-        return obj
-    
-    if view_id in server.OBSERVED_OBJECTS:
-        raise ValueError(f"Only one object per view is allowed")
-        
-    obj = _deep_make_observable(obj)
-    expl = getattr(obj, META_OBJECT_PROPERTY)
-    expl.views.add(view_id)
+def init(draw_func, wait_client=True, host="localhost", port=8120, silent=False) -> None:
+    set_draw_function(draw_func)
+    # _start_threaded_server(host=host, port=port)
 
-    init_data = {
-        "view_id": view_id,
-        "structure": serialize(obj, path=view_id),
-        "widget": None if widget is None else dataclasses.asdict(widget),
-    }
+    threading.Thread(target=_start_threaded_server, kwargs={
+        "host": host,
+        "port": port,
+    }, daemon=True).start()
 
-    server.OBSERVED_OBJECTS[view_id] = obj, widget
+    while not CLIENTS and wait_client:
+        time.sleep(0.1)
 
-    server.send_update(
-        "snapshot",
-        data=init_data,
-    )
-    from .server import send_update
-    send_update("__init__", {})
-    expl.initialised = True
-
-    return obj
+    if not silent:
+        print("Visit https://explainable.numan.ai/ to see your data")
+        # logger.info(f"Visit https://explainable.numan.ai/ to see your data")
