@@ -51,6 +51,7 @@ class Edge:
     edge_id: str
     node_start_id: str
     node_end_id: str
+    data: Any = None
 
 
 @dataclass
@@ -69,11 +70,12 @@ class Graph:
     def find_node(self, node_id: str) -> Node:
         return self.nodes_by_id[node_id]
     
-    def connect(self, node1: Node, node2: Node) -> Edge:
+    def connect(self, node1: Node, node2: Node, data: Any = None) -> Edge:
         edge = Edge(
             edge_id=f"{node1.node_id}-{node2.node_id}",
             node_start_id=node1.node_id,
             node_end_id=node2.node_id,
+            data=data,
         )
         self.edges.append(edge)
         return edge
