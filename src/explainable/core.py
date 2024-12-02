@@ -52,6 +52,8 @@ class Edge:
     node_start_id: str
     node_end_id: str
     data: Any = None
+    line_width: float = 2.0
+    line_color: float = '#fff'
 
 
 @dataclass
@@ -233,7 +235,7 @@ async def _send_updates() -> None:
             }
         }))
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.1)
 
 
 async def _main(host, port):
