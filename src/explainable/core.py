@@ -7,6 +7,9 @@ import json
 from typing import Any, Callable, Optional
 
 
+UPDATE_INTERVAL = 0.1
+
+
 @dataclass
 class Node:
     data: any
@@ -235,7 +238,7 @@ async def _send_updates() -> None:
             }
         }))
 
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(UPDATE_INTERVAL)
 
 
 async def _main(host, port):
@@ -248,9 +251,11 @@ def _start_threaded_server(host, port) -> None:
     asyncio.run(_main(host, port))
 
 
-def init(draw_func, wait_client=True, host="localhost", port=8120, silent=False) -> None:
+def init(draw_func, update_interval: float = 0.1, wait_client=True, host="localhost", port=8120, silent=False) -> None:
+    global UPDATE_INTERVAL
     set_draw_function(draw_func)
     # _start_threaded_server(host=host, port=port)
+    UPDATE_INTERVAL = update_interval
 
     threading.Thread(target=_start_threaded_server, kwargs={
         "host": host,
