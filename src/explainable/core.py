@@ -16,6 +16,7 @@ class Node:
     object_id: int = 0
     widget: str = ""
     layer: str = "main"
+    # don't set this
     node_id: str = ""
     default_x: float = 0.0
     default_y: float = 0.0
@@ -56,7 +57,8 @@ class Edge:
     node_end_id: str
     data: Any = None
     line_width: float = 2.0
-    line_color: float = '#fff'
+    line_color: str = '#fff'
+    label_color: str = '#fff'
 
 
 @dataclass
