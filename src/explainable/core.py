@@ -51,6 +51,11 @@ class PixelNode(Node):
 
 
 @dataclass
+class LineChartNode(Node):
+    widget: str = "linechart"
+
+
+@dataclass
 class Edge:
     edge_id: str
     node_start_id: str

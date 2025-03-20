@@ -10,6 +10,7 @@ from .core import (
     RowNode,
     ColumnNode,
     PixelNode,
+    LineChartNode,
 )
 
 __version__ = "0.5.1"
