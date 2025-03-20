@@ -18,8 +18,9 @@ pip install -U explainable
 
 1. Install using `pip`
 2. Import the library in your code
-3. Add `explainable.init()` in your code to start the server
-4. Select data to observe with `data = explainable.observe("my_view", data)`
+3. Write a drawing function that returns a `Graph` object
+3. Add `explainable.init(<draw_func>)` in your code to start the server
+4. Add context using `explainable.add_context()` in your code
 5. Go to https://explainable.numan.ai/
 
 ```python
@@ -27,30 +28,26 @@ import time
 
 import explainable
 
-# start the server
-explainable.init()
 
-# create your data
-lst = [0, 1, 2]
+def draw(cm: explainable.ContextManager):
+    ctx = cm.get("my_var", default=0)
 
-# start observing
-lst = explainable.observe("view1", lst)
+    return explainable.Graph([
+        explainable.TextNode(f"My var: {ctx}"),
+    ], edges=[])
 
-# change your data
+
+explainable.init(draw)
+explainable.add_context()
+
+my_var = 1
+
 while True:
-  lst[0] += 1
-  lst[1] -= 1
-
-  time.sleep(1)
+    my_var += 1
+    time.sleep(0.5)
 ```
 
 ![plot](./demo2.png)
-
-Currently supported data structures:
-- dataclass
-- list
-- dict
-- enums
 
 ## Requirements
 
