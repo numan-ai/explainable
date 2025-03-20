@@ -1,13 +1,25 @@
-from base64 import b64encode, urlsafe_b64encode
-from collections import defaultdict
-from dataclasses import asdict, dataclass, field, is_dataclass
 import gzip
 import inspect
 import json
-from typing import Any, Callable, Optional
+import time
+import asyncio
+import logging
+import threading
+
+from base64 import b64encode
+from dataclasses import asdict, dataclass, field, is_dataclass
+from typing import Any, Callable
+
+import websockets
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 UPDATE_INTERVAL = 0.1
+DEFAULT_CTX_NAME = "MAIN"
+UNSET = object()
 
 
 @dataclass
@@ -18,8 +30,8 @@ class Node:
     layer: str = "main"
     # don't set this
     node_id: str = ""
-    default_x: float = 0.0
-    default_y: float = 0.0
+    default_x: float = 100.0
+    default_y: float = 100.0
 
     def __post_init__(self) -> None:
         self.node_id = f"{self.layer}:{self.object_id}"
@@ -93,8 +105,8 @@ class Graph:
         return edge
 
 
-def add_context(name: str = "MAIN"):
-    CONTEXT.set(name, inspect.stack()[1])
+def add_context(name: str = DEFAULT_CTX_NAME):
+    CONTEXT.set_ctx(name, inspect.stack()[1])
 
 
 DRAW_FUNCTION = None
@@ -118,20 +130,6 @@ def collect_vis_state() -> bytes:
     return compressed_data
 
 
-import time
-import json
-import asyncio
-import logging
-import threading
-
-from dataclasses import asdict, dataclass
-
-import websockets
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-
 @dataclass
 class ObjectUpdate:
     type: str
@@ -150,20 +148,24 @@ CONFIG = ServerConfig()
 
 
 class ContextManager:
+
     def __init__(self) -> None:
         self._ctx_data: dict[str, inspect.FrameInfo] = {}
 
-    def set(self, name: str, value: inspect.FrameInfo):
+    def set_ctx(self, name: str, value: inspect.FrameInfo):
         self._ctx_data[name] = value
 
-    def has(self, name: str) -> bool:
+    def has_ctx(self, name: str) -> bool:
         return name in self._ctx_data
 
-    def get(self, name: str = 'MAIN') -> dict[str, Any]:
+    def get_ctx(self, name: str = DEFAULT_CTX_NAME) -> dict[str, Any]:
         try:
             return self._ctx_data[name].frame.f_locals
         except KeyError:
             return {}
+        
+    def get(self, name: str, ctx_name: str = DEFAULT_CTX_NAME, default: Any = UNSET) -> Any:
+        return self.get_ctx(ctx_name).get(name, default)
 
 
 CLIENTS: list[websockets.WebSocketServerProtocol] = []
