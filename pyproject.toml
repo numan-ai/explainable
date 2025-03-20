@@ -1,35 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "explainable"
+dynamic = ["version"]
 description = "Visualise complex data structures in real time"
 readme = "README.md"
 requires-python = ">=3.7"
-license = {file = "LICENSE"}
+license = "MIT"
+keywords = []
 authors = [
   { name = "Numan Team", email = "kostya@numan.ai" },
 ]
-maintainers = [
-  { name = "Numan Team", email = "kostya@numan.ai" },
-]
-dynamic = ["version"]
-dependencies = [
-  "websockets>=12.0",
-]
-keywords = ["visualisation", "debug", "debugger", "debugging", "data structures", "explainable"]
 classifiers = [
   "Development Status :: 4 - Beta",
-  "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
-  "Programming Language :: Python :: 3",
+  "Programming Language :: Python",
   "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Topic :: Software Development",
-  "Topic :: Software Development :: Debuggers",
-  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
 ]
+dependencies = []
 
 [project.urls]
 Homepage = "https://github.com/numan-ai/explainable"
@@ -38,18 +34,34 @@ Repository = "https://github.com/numan-ai/explainable.git"
 Issues = "https://github.com/numan-ai/explainable/issues"
 Changelog = "https://github.com/numan-ai/explainable/blob/master/CHANGELOG.md"
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [tool.hatch.version]
 path = "src/explainable/__init__.py"
 
-[tool.hatch.build.targets.sdist]
-exclude = [
-  "/.github",
-  "/docs",
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/explainable tests}"
+
+[tool.coverage.run]
+source_pkgs = ["explainable", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/explainable/__about__.py",
 ]
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/explainable"]
+[tool.coverage.paths]
+explainable = ["src/explainable", "*/explainable/src/explainable"]
+tests = ["tests", "*/explainable/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+[tool.hatch.build.targets.sdist]
+core-metadata-version = "2.4"
