@@ -164,8 +164,11 @@ class ContextManager:
         except KeyError:
             return {}
         
-    def get(self, name: str, ctx_name: str = DEFAULT_CTX_NAME, default: Any = UNSET) -> Any:
-        return self.get_ctx(ctx_name).get(name, default)
+    def get(self, name: str, default: Any = UNSET, ctx_name: str = DEFAULT_CTX_NAME, ) -> Any:
+        ctx = self.get_ctx(ctx_name)
+        if default is UNSET:
+            return ctx[name]
+        return ctx.get(name, default)
 
 
 CLIENTS: list[websockets.WebSocketServerProtocol] = []
