@@ -171,7 +171,7 @@ class ContextManager:
         return ctx.get(name, default)
 
 
-CLIENTS: list[websockets.WebSocketServerProtocol] = []
+CLIENTS: list[websockets.ServerConnection] = []
 OBSERVED_OBJECTS: dict[str, Any] = {}
 CONTEXT: ContextManager = ContextManager()
 
@@ -188,7 +188,7 @@ async def _send_message_to_all(message: str | bytes) -> None:
         await _send_message_to_client(client, message)
 
 
-async def _send_message_to_client(client: websockets.WebSocketServerProtocol, message: str | bytes) -> None:
+async def _send_message_to_client(client: websockets.ServerConnection, message: str | bytes) -> None:
     try:
         await client.send(message)
     except websockets.exceptions.ConnectionClosedError:
@@ -203,7 +203,7 @@ async def _send_init_data():
     pass
 
 
-async def _handle_client(websocket: websockets.WebSocketServerProtocol, path: str=None) -> None:
+async def _handle_client(websocket: websockets.ServerConnection, path: str=None) -> None:
     from . import __version__
 
     global PAUSED
