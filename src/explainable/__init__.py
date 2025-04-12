@@ -11,6 +11,8 @@ from .core import (
     ColumnNode,
     PixelNode,
     LineChartNode,
+    ClickableExclusiveNode,
+    ClickableExclusiveEdge,
 )
 
 __version__ = "1.1.0"

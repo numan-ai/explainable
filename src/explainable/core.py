@@ -9,6 +9,7 @@ import threading
 from base64 import b64encode
 from dataclasses import asdict, dataclass, field, is_dataclass
 from typing import Any, Callable
+import uuid
 
 import websockets
 
@@ -25,16 +26,10 @@ UNSET = object()
 @dataclass
 class Node:
     data: any
-    object_id: int = 0
+    object_id: str = ""
     widget: str = ""
-    layer: str = "main"
-    # don't set this
-    node_id: str = ""
     default_x: float = 100.0
     default_y: float = 100.0
-
-    def __post_init__(self) -> None:
-        self.node_id = f"{self.layer}:{self.object_id}"
 
 
 @dataclass
@@ -68,6 +63,16 @@ class LineChartNode(Node):
 
 
 @dataclass
+class ClickableExclusiveNode(Node):
+    """
+    data:
+        - group: str
+        - widget: Node
+    """
+    widget: str = "clickable_exclusive"
+
+
+@dataclass
 class Edge:
     edge_id: str
     node_start_id: str
@@ -76,6 +81,19 @@ class Edge:
     line_width: float = 2.0
     line_color: str = '#fff'
     label_color: str = '#fff'
+    widget: str = "edge"
+
+
+@dataclass
+class ClickableExclusiveEdge(Edge):
+    edge_id: str
+    node_start_id: str
+    node_end_id: str
+    data: Any = None
+    line_width: float = 2.0
+    line_color: str = '#fff'
+    label_color: str = '#fff'
+    widget: str = "clickable_exclusive_edge"
 
 
 @dataclass
@@ -85,20 +103,20 @@ class Graph:
     nodes_by_id: dict[str, Node] = field(default_factory=dict)
 
     def add_node(self, node: Node) -> Node:
-        if node.node_id in self.nodes_by_id:
-            return self.nodes_by_id[node.node_id]
+        if node.object_id in self.nodes_by_id:
+            return self.nodes_by_id[node.object_id]
         self.nodes.append(node)
-        self.nodes_by_id[node.node_id] = node
+        self.nodes_by_id[node.object_id] = node
         return node
     
-    def find_node(self, node_id: str) -> Node:
-        return self.nodes_by_id[node_id]
+    def find_node(self, object_id: str) -> Node:
+        return self.nodes_by_id[object_id]
     
     def connect(self, node1: Node, node2: Node, data: Any = None) -> Edge:
         edge = Edge(
-            edge_id=f"{node1.node_id}-{node2.node_id}",
-            node_start_id=node1.node_id,
-            node_end_id=node2.node_id,
+            edge_id=f"{node1.object_id}-{node2.object_id}",
+            node_start_id=node1.object_id,
+            node_end_id=node2.object_id,
             data=data,
         )
         self.edges.append(edge)
@@ -151,6 +169,7 @@ class ContextManager:
 
     def __init__(self) -> None:
         self._ctx_data: dict[str, inspect.FrameInfo] = {}
+        self._clickable_exclusive_data: dict[str, str] = {}
 
     def set_ctx(self, name: str, value: inspect.FrameInfo):
         self._ctx_data[name] = value
@@ -169,6 +188,13 @@ class ContextManager:
         if default is UNSET:
             return ctx[name]
         return ctx.get(name, default)
+    
+    def get_clickable_exclusive(self, group: str) -> str:
+        return str(self._clickable_exclusive_data.get(group, ""))
+    
+    def set_clickable_exclusive(self, group: str, value: str):
+        self._clickable_exclusive_data[group] = value
+
 
 
 CLIENTS: list[websockets.ServerConnection] = []
@@ -231,8 +257,11 @@ async def _handle_client(websocket: websockets.ServerConnection, path: str=None)
                     "data": CONFIG.paused,
                 }))
                 continue
+            elif data["type"] == "update_selections":
+                for key, value in data["data"]['selections'].items():
+                    CONTEXT.set_clickable_exclusive(key, value)
             else:
-                raise ValueError(f"Unknown action: {data['action']}")
+                raise ValueError(f"Unknown message type: {data['type']}")
     except websockets.ConnectionClosed:
         _remove_client(websocket)
         logger.debug("Client disconnected")
