@@ -274,9 +274,10 @@ def init(draw_func, update_interval: float = 0.1, wait_client=True, host="localh
         "port": port,
     }, daemon=True).start()
 
-    while not CLIENTS and wait_client:
-        time.sleep(0.1)
-
     if not silent:
         print("Visit https://explainable.numan.ai/ to see your data")
         # logger.info(f"Visit https://explainable.numan.ai/ to see your data")
+
+    while not CLIENTS and wait_client:
+        time.sleep(0.1)
+
