@@ -9,7 +9,6 @@ import threading
 from base64 import b64encode
 from dataclasses import asdict, dataclass, field, is_dataclass
 from typing import Any, Callable
-import uuid
 
 import websockets
 
@@ -25,11 +24,12 @@ UNSET = object()
 
 @dataclass
 class Node:
-    data: any
+    data: Any
     object_id: str = ""
     widget: str = ""
     default_x: float = 100.0
     default_y: float = 100.0
+    is_draggable: bool = True
 
 
 @dataclass
