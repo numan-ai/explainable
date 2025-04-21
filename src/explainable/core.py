@@ -225,10 +225,6 @@ async def _send_message_to_client(client: websockets.ServerConnection, message: 
         logger.debug("Client disconnected")
 
 
-async def _send_init_data():
-    pass
-
-
 async def _handle_client(websocket: websockets.ServerConnection, path: str=None) -> None:
     from . import __version__
 
@@ -244,7 +240,15 @@ async def _handle_client(websocket: websockets.ServerConnection, path: str=None)
         },
     }))
 
-    await _send_init_data()
+    try:
+        upd_selections = await websocket.recv()
+    except websockets.ConnectionClosed:
+        _remove_client(websocket)
+        logger.debug("Client disconnected")
+        return
+    
+    for key, value in json.loads(upd_selections)["data"]['selections'].items():
+        CONTEXT.set_clickable_exclusive(key, value)
 
     try:
         async for message in websocket:
