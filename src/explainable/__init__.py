@@ -1,5 +1,6 @@
 from .core import (
     init, 
+    save_log,
     add_context,
     set_draw_function, 
     ContextManager, 

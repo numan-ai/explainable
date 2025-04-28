@@ -135,17 +135,21 @@ def set_draw_function(func: Callable[[dict[str, dict]], dict[str, Any]]):
     DRAW_FUNCTION = func
 
 
-def collect_vis_state() -> bytes:
+def collect_vis_state() -> tuple[bytes, bool]:
     if CONTEXT is None:
         raise RuntimeError("FRAME is None")
     
     data = DRAW_FUNCTION(CONTEXT)
+
+    if data is None:
+        return None, False
+
     if is_dataclass(data):
         data = asdict(data)
     raw_data = json.dumps(data)
     compressed_data = gzip.compress(raw_data.encode())
 
-    return compressed_data
+    return compressed_data, True
 
 
 @dataclass
@@ -271,9 +275,17 @@ async def _handle_client(websocket: websockets.ServerConnection, path: str=None)
         logger.debug("Client disconnected")
 
 
+LOG: list[bytes] = []
+
+
 async def _send_updates() -> None:
     while True:
-        data = collect_vis_state()
+        data, ok = collect_vis_state()
+        if not ok:
+            await asyncio.sleep(UPDATE_INTERVAL)
+            continue
+        
+        LOG.append(data)
 
         await _send_message_to_all(json.dumps({
             "type": "snapshot",
@@ -284,6 +296,20 @@ async def _send_updates() -> None:
         }))
 
         await asyncio.sleep(UPDATE_INTERVAL)
+
+
+def save_log(file_path: str) -> None:
+    with open(file_path, "wb") as f:
+        for data in LOG:
+            f.write(data)
+            f.write(b"!\n|\n!")
+
+
+def read_log(file_path: str) -> list[bytes]:
+    with open(file_path, "rb") as f:
+        data = f.read()
+    
+    return data.split(b"!\n|\n!")
 
 
 async def _main(host, port):
