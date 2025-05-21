@@ -1,5 +1,4 @@
 from base64 import b64encode
-import gzip
 import json
 import sys
 import asyncio
@@ -22,7 +21,7 @@ logger.addHandler(logging.StreamHandler())
 class ReplayConfig:
     file_path: str
     speed: float = 0.3
-    idx: int = 0
+    idx: int = 5000
     running: bool = True
 
 

@@ -8,7 +8,7 @@ import threading
 
 from base64 import b64encode
 from dataclasses import asdict, dataclass, field, is_dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import websockets
 
@@ -276,26 +276,45 @@ async def _handle_client(websocket: websockets.ServerConnection, path: str=None)
 
 
 LOG: list[bytes] = []
+UPDATES_TO_SEND = []
 
 
 async def _send_updates() -> None:
+    if UPDATE_INTERVAL is None:
+        while True:
+            upds = UPDATES_TO_SEND.copy()
+            UPDATES_TO_SEND.clear()
+            for upd in upds:
+                await _send_update(upd)
+            await asyncio.sleep(0.01)
+
     while True:
         data, ok = collect_vis_state()
         if not ok:
             await asyncio.sleep(UPDATE_INTERVAL)
-            continue
+            return
+        await _send_update(data)
         
-        LOG.append(data)
-
-        await _send_message_to_all(json.dumps({
-            "type": "snapshot",
-            "data": {
-                "view_id": "view1",
-                "structure": b64encode(data).decode(),
-            }
-        }))
-
         await asyncio.sleep(UPDATE_INTERVAL)
+
+
+async def _send_update(data):
+    LOG.append(data)
+    await _send_message_to_all(json.dumps({
+        "type": "snapshot",
+        "data": {
+            "view_id": "view1",
+            "structure": b64encode(data).decode(),
+        }
+    }))
+
+
+
+def update() -> None:
+    data, ok = collect_vis_state()
+    if not ok:
+        return
+    UPDATES_TO_SEND.append(data)
 
 
 def save_log(file_path: str) -> None:
@@ -322,7 +341,7 @@ def _start_threaded_server(host, port) -> None:
     asyncio.run(_main(host, port))
 
 
-def init(draw_func, update_interval: float = 0.1, wait_client=True, host="localhost", port=8120, silent=False) -> None:
+def init(draw_func, update_interval: Optional[float] = 0.1, wait_client=True, host="localhost", port=8120, silent=False) -> None:
     global UPDATE_INTERVAL
     set_draw_function(draw_func)
     # _start_threaded_server(host=host, port=port)
