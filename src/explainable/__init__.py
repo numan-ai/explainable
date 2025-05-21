@@ -3,9 +3,12 @@ from .core import (
     update,
     save_log,
     add_context,
-    set_draw_function, 
-    ContextManager, 
-    Graph, 
+    set_draw_function,
+    ContextManager,
+    Graph,
+)
+
+from .entities import (
     Edge,
     TextNode,
     NumberNode,
