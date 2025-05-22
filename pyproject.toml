@@ -25,7 +25,9 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = []
+dependencies = [
+    "websockets==14.2",
+]
 
 [project.urls]
 Homepage = "https://github.com/numan-ai/explainable"
