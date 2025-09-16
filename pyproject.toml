@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.0.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -26,7 +26,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-    "websockets==14.2",
+    "websockets>=14.2",
 ]
 
 [project.urls]
@@ -67,3 +67,6 @@ exclude_lines = [
 
 [tool.hatch.build.targets.sdist]
 core-metadata-version = "2.4"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/explainable"]
