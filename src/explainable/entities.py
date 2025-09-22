@@ -26,7 +26,7 @@ class TextNodeData(TypedDict):
 
 @dataclass
 class TextNode(Node):
-    data: TextNodeData = field(default_factory=lambda: TextNodeData(text="", width=None, height=None))
+    data: TextNodeData = field(default_factory=lambda: TextNodeData(text=""))
     widget: str = "text"
 
 
@@ -62,14 +62,14 @@ class ColumnNode(Node):
 
 class PixelNodeData(TypedDict):
     color: str
-    size: NotRequired[int] = None
-    width: NotRequired[int] = None
-    height: NotRequired[int] = None
+    size: NotRequired[int]
+    width: NotRequired[int]
+    height: NotRequired[int]
 
 
 @dataclass
 class PixelNode(Node):
-    data: PixelNodeData = field(default_factory=lambda: PixelNodeData(color="", size=None, width=None, height=None))
+    data: PixelNodeData = field(default_factory=lambda: PixelNodeData(color=""))
     widget: str = "pixel"
 
 
