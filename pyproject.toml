@@ -71,3 +71,6 @@ core-metadata-version = "2.4"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/explainable"]
+include = [
+  "src/explainable/py.typed",
+]
