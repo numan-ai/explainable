@@ -1,5 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Any, NotRequired, Optional, TypedDict
+from typing import Any, TypedDict
+try:
+    from typing import NotRequired
+except ImportError:
+    from typing_extensions import NotRequired
 
 
 @dataclass

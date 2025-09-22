@@ -27,6 +27,7 @@ classifiers = [
 ]
 dependencies = [
     "websockets>=14.2",
+    "typing_extensions>=4.15.0",
 ]
 
 [project.urls]
