@@ -63,7 +63,7 @@ def set_draw_function(func: Callable[[dict[str, dict]], dict[str, Any]]):
     DRAW_FUNCTION = func
 
 
-def collect_vis_state() -> tuple[bytes, bool]:
+def collect_vis_state() -> tuple[bytes | None, bool]:
     if CONTEXT is None:
         raise RuntimeError("FRAME is None")
     
@@ -126,7 +126,6 @@ class ContextManager:
     
     def set_clickable_exclusive(self, group: str, value: str):
         self._clickable_exclusive_data[group] = value
-
 
 
 CLIENTS: list[websockets.ServerConnection] = []
@@ -217,10 +216,11 @@ async def _send_updates() -> None:
             await asyncio.sleep(0.01)
 
     while True:
-        data, ok = collect_vis_state()
-        if not ok:
+        data, has_data = collect_vis_state()
+        if not has_data:
             await asyncio.sleep(UPDATE_INTERVAL)
-            return
+            continue
+        
         await _send_update(data)
         
         await asyncio.sleep(UPDATE_INTERVAL)
@@ -237,10 +237,9 @@ async def _send_update(data):
     }))
 
 
-
 def update() -> None:
-    data, ok = collect_vis_state()
-    if not ok:
+    data, has_data = collect_vis_state()
+    if not has_data:
         return
     UPDATES_TO_SEND.append(data)
 
